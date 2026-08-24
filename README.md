@@ -112,7 +112,12 @@ no local install, no command line.
    `claude/reading-race-tracker-oy6g74` branch (or whichever branch has
    this merged into it by the time you deploy).
 4. Fill in:
-   - **Build Command**: `npm install && npm run build`
+   - **Build Command**: `npm install --include=dev && npm run build`
+     (the `--include=dev` matters: `typescript`/`vite` and their type
+     packages are devDependencies, and a plain `npm install` silently
+     skips those once `NODE_ENV=production` is set below, breaking the
+     build with `Cannot find type definition file for 'vite/client'` or
+     similar — this flag forces them to install anyway)
    - **Start Command**: `npm run start`
    - **Instance Type**: Free is fine — the app server holds no data of its
      own, so a free instance restarting doesn't lose anything.

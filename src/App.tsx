@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { RaceStatusProvider } from "./RaceStatusContext";
 import { LoginScreen } from "./components/LoginScreen";
 import { ClassSwitcher } from "./components/ClassSwitcher";
 import { StudentRoster } from "./components/StudentRoster";
@@ -7,6 +8,8 @@ import { AddBookForm } from "./components/AddBookForm";
 import { ReadingChart } from "./components/ReadingChart";
 import { ReadingTable } from "./components/ReadingTable";
 import { Leaderboard } from "./components/Leaderboard";
+import { AdminPanel } from "./components/AdminPanel";
+import { RaceStatusBanner } from "./components/RaceStatusBanner";
 import { useClassData } from "./useClassData";
 import { computeStudentStats } from "./aggregate";
 import { api, type ClassSummary } from "./api";
@@ -27,13 +30,25 @@ function App() {
     return <LoginScreen />;
   }
 
-  return <SignedInApp teacherName={teacher.name} onSignOut={signOut} />;
+  return (
+    <RaceStatusProvider>
+      <SignedInApp teacherName={teacher.name} isAdmin={teacher.isAdmin} onSignOut={signOut} />
+    </RaceStatusProvider>
+  );
 }
 
-function SignedInApp({ teacherName, onSignOut }: { teacherName: string; onSignOut: () => void }) {
+function SignedInApp({
+  teacherName,
+  isAdmin,
+  onSignOut,
+}: {
+  teacherName: string;
+  isAdmin: boolean;
+  onSignOut: () => void;
+}) {
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"class" | "standings">("class");
+  const [tab, setTab] = useState<"class" | "standings" | "admin">("class");
 
   const loadClasses = useCallback(async () => {
     const list = await api.getClasses();
@@ -78,6 +93,8 @@ function SignedInApp({ teacherName, onSignOut }: { teacherName: string; onSignOu
           books, etc). Reading more WonderRoom books, or more books overall, is always welcome.
         </p>
 
+        <RaceStatusBanner />
+
         <ClassSwitcher
           classes={classes}
           selectedClassId={selectedClassId}
@@ -104,6 +121,17 @@ function SignedInApp({ teacherName, onSignOut }: { teacherName: string; onSignOu
           >
             Race standings
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "admin"}
+              className={tab === "admin" ? "active" : ""}
+              onClick={() => setTab("admin")}
+            >
+              Admin
+            </button>
+          )}
         </div>
       </header>
 
@@ -124,6 +152,7 @@ function SignedInApp({ teacherName, onSignOut }: { teacherName: string; onSignOu
           ))}
 
         {tab === "standings" && <Leaderboard />}
+        {tab === "admin" && isAdmin && <AdminPanel />}
       </main>
     </div>
   );

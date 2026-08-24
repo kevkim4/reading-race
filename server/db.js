@@ -46,4 +46,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
   CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
   CREATE INDEX IF NOT EXISTS idx_books_student ON book_entries(student_id);
+
+  -- Single-row table: the school-wide race window, set by an admin.
+  CREATE TABLE IF NOT EXISTS race_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    start_date TEXT,
+    deadline_date TEXT
+  );
+  INSERT OR IGNORE INTO race_settings (id, start_date, deadline_date) VALUES (1, NULL, NULL);
 `);

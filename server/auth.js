@@ -8,6 +8,36 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const SESSION_COOKIE = "reading_race_session";
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || "").trim().toLowerCase() || null;
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+if (!ALLOWED_EMAIL_DOMAIN) {
+  console.warn(
+    "[auth] ALLOWED_EMAIL_DOMAIN is not set — any Google account can sign in. Set it in your environment to restrict sign-in to your school's domain.",
+  );
+}
+
+export function isEmailAllowed(email) {
+  if (!ALLOWED_EMAIL_DOMAIN) return true;
+  return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
+}
+
+export function isAdminEmail(email) {
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+export function teacherResponse(teacher) {
+  return {
+    id: teacher.id,
+    email: teacher.email,
+    name: teacher.name,
+    isAdmin: isAdminEmail(teacher.email),
+  };
+}
+
 if (!GOOGLE_CLIENT_ID) {
   console.warn(
     "[auth] GOOGLE_CLIENT_ID is not set — Google sign-in will fail. See README for setup.",

@@ -19,10 +19,28 @@ export interface Teacher {
   id: string;
   email: string;
   name: string;
+  isAdmin: boolean;
 }
 
 export interface ServerConfig {
   googleClientId: string | null;
+  allowedEmailDomain: string | null;
+}
+
+export interface RaceStatus {
+  startDate: string | null;
+  deadlineDate: string | null;
+  hasStarted: boolean;
+  isOver: boolean;
+}
+
+export interface AdminClass {
+  id: string;
+  name: string;
+  teacherName: string;
+  teacherEmail: string;
+  studentCount: number;
+  createdAt: string;
 }
 
 export interface ClassSummary {
@@ -53,6 +71,11 @@ export interface LeaderboardClass {
   classFinishTime: string | null;
 }
 
+export interface LeaderboardResponse {
+  classes: LeaderboardClass[];
+  raceStatus: RaceStatus;
+}
+
 export const api = {
   getConfig: () => request<ServerConfig>("/config"),
   getMe: () => request<Teacher>("/me"),
@@ -77,5 +100,15 @@ export const api = {
     request<ApiBook>(`/students/${studentId}/books`, { method: "POST", body: JSON.stringify({ source, title }) }),
   removeBook: (bookId: string) => request<void>(`/books/${bookId}`, { method: "DELETE" }),
 
-  getLeaderboard: () => request<{ classes: LeaderboardClass[] }>("/leaderboard"),
+  getLeaderboard: () => request<LeaderboardResponse>("/leaderboard"),
+
+  getRaceStatus: () => request<RaceStatus>("/race-settings"),
+  updateRaceSettings: (startDate: string | null, deadlineDate: string | null) =>
+    request<RaceStatus>("/race-settings", {
+      method: "PUT",
+      body: JSON.stringify({ startDate, deadlineDate }),
+    }),
+
+  getAdminClasses: () => request<AdminClass[]>("/admin/classes"),
+  deleteAdminClass: (classId: string) => request<void>(`/admin/classes/${classId}`, { method: "DELETE" }),
 };

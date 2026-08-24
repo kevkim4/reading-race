@@ -33,13 +33,17 @@ function loadGoogleScript(): Promise<void> {
 export function LoginScreen() {
   const { refresh } = useAuth();
   const [googleClientId, setGoogleClientId] = useState<string | null | undefined>(undefined);
+  const [allowedEmailDomain, setAllowedEmailDomain] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
       .getConfig()
-      .then((c) => setGoogleClientId(c.googleClientId))
+      .then((c) => {
+        setGoogleClientId(c.googleClientId);
+        setAllowedEmailDomain(c.allowedEmailDomain);
+      })
       .catch(() => setGoogleClientId(null));
   }, []);
 
@@ -55,8 +59,8 @@ export function LoginScreen() {
             try {
               await api.signInWithGoogle(response.credential);
               await refresh();
-            } catch {
-              setError("Sign-in failed. Please try again.");
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Sign-in failed. Please try again.");
             }
           },
         });
@@ -80,8 +84,8 @@ export function LoginScreen() {
     try {
       await api.devSignIn(devName, devEmail);
       await refresh();
-    } catch {
-      setError("Sign-in failed. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed. Please try again.");
     }
   }
 
@@ -89,7 +93,10 @@ export function LoginScreen() {
     <div className="login-screen">
       <div className="login-card">
         <h1>Reading Race</h1>
-        <p className="subtitle">Sign in to manage your class's reading progress.</p>
+        <p className="subtitle">
+          Sign in to manage your class's reading progress.
+          {allowedEmailDomain && ` Use your @${allowedEmailDomain} account.`}
+        </p>
 
         {googleClientId === undefined && <p className="empty-hint">Loading…</p>}
 

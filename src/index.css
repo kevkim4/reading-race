@@ -389,6 +389,26 @@ button {
   background: var(--page-plane);
 }
 
+.roster-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.roster-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.roster-edit-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+}
+
 .log-form {
   display: flex;
   flex-direction: column;
@@ -462,6 +482,89 @@ button {
   background: var(--series-others);
 }
 
+/* Student book list (edit/delete individual entries) */
+.book-list {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gridline);
+}
+
+.book-list-heading {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.book-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.book-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.book-list-row:hover {
+  background: var(--page-plane);
+}
+
+.book-list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-list-date {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex: none;
+}
+
+.book-list-empty {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gridline);
+}
+
+.book-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.book-edit-form input[type="text"] {
+  flex: 1;
+  min-width: 120px;
+  padding: 5px 8px;
+}
+
+.book-edit-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+.segmented.small button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
 /* Chart */
 .chart-header {
   display: flex;
@@ -469,7 +572,7 @@ button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 26px;
 }
 
 .chart-header h2 {

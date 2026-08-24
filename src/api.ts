@@ -94,10 +94,14 @@ export const api = {
     request<{ students: ApiStudent[]; books: ApiBook[] }>(`/classes/${classId}/data`),
   addStudent: (classId: string, name: string) =>
     request<ApiStudent>(`/classes/${classId}/students`, { method: "POST", body: JSON.stringify({ name }) }),
+  renameStudent: (studentId: string, name: string) =>
+    request<ApiStudent>(`/students/${studentId}`, { method: "PATCH", body: JSON.stringify({ name }) }),
   removeStudent: (studentId: string) => request<void>(`/students/${studentId}`, { method: "DELETE" }),
 
   addBook: (studentId: string, source: BookSource, title: string) =>
     request<ApiBook>(`/students/${studentId}/books`, { method: "POST", body: JSON.stringify({ source, title }) }),
+  updateBook: (bookId: string, source: BookSource, title: string) =>
+    request<ApiBook>(`/books/${bookId}`, { method: "PATCH", body: JSON.stringify({ source, title }) }),
   removeBook: (bookId: string) => request<void>(`/books/${bookId}`, { method: "DELETE" }),
 
   getLeaderboard: () => request<LeaderboardResponse>("/leaderboard"),

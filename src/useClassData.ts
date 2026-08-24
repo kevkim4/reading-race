@@ -36,6 +36,15 @@ export function useClassData(classId: string | null) {
     [classId, reload],
   );
 
+  const renameStudent = useCallback(
+    async (studentId: string, name: string) => {
+      if (!name.trim()) return;
+      await api.renameStudent(studentId, name.trim());
+      await reload();
+    },
+    [reload],
+  );
+
   const removeStudent = useCallback(
     async (studentId: string) => {
       await api.removeStudent(studentId);
@@ -52,5 +61,31 @@ export function useClassData(classId: string | null) {
     [reload],
   );
 
-  return { students, books, loading, addStudent, removeStudent, addBook };
+  const updateBook = useCallback(
+    async (bookId: string, source: BookSource, title: string) => {
+      await api.updateBook(bookId, source, title);
+      await reload();
+    },
+    [reload],
+  );
+
+  const removeBook = useCallback(
+    async (bookId: string) => {
+      await api.removeBook(bookId);
+      await reload();
+    },
+    [reload],
+  );
+
+  return {
+    students,
+    books,
+    loading,
+    addStudent,
+    renameStudent,
+    removeStudent,
+    addBook,
+    updateBook,
+    removeBook,
+  };
 }

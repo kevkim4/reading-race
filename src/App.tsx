@@ -72,7 +72,8 @@ function SignedInApp({
     setSelectedClassId(created.id);
   }
 
-  const { students, books, addStudent, removeStudent, addBook } = useClassData(selectedClassId);
+  const { students, books, addStudent, renameStudent, removeStudent, addBook, updateBook, removeBook } =
+    useClassData(selectedClassId);
   const stats = useMemo(() => computeStudentStats(students, books), [students, books]);
 
   return (
@@ -142,8 +143,19 @@ function SignedInApp({
           ) : (
             <>
               <div className="input-row">
-                <StudentRoster students={students} onAdd={addStudent} onRemove={removeStudent} />
-                <AddBookForm students={students} onAdd={addBook} />
+                <StudentRoster
+                  students={students}
+                  onAdd={addStudent}
+                  onRename={renameStudent}
+                  onRemove={removeStudent}
+                />
+                <AddBookForm
+                  students={students}
+                  books={books}
+                  onAdd={addBook}
+                  onUpdateBook={updateBook}
+                  onRemoveBook={removeBook}
+                />
               </div>
 
               <ReadingChart stats={stats} />

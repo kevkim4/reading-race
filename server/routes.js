@@ -181,6 +181,18 @@ router.post("/classes/:classId/students", requireAuth, async (req, res) => {
   res.status(201).json({ id, name });
 });
 
+router.patch("/students/:studentId", requireAuth, async (req, res) => {
+  const student = await findStudentForTeacher(req.params.studentId, req.teacher.id);
+  if (!student) return res.status(404).json({ error: "Student not found" });
+  const name = (req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "Student name is required" });
+  const row = await queryOne("UPDATE students SET name = $1 WHERE id = $2 RETURNING *", [
+    name,
+    student.id,
+  ]);
+  res.json({ id: row.id, name: row.name });
+});
+
 router.delete("/students/:studentId", requireAuth, async (req, res) => {
   const student = await findStudentForTeacher(req.params.studentId, req.teacher.id);
   if (!student) return res.status(404).json({ error: "Student not found" });
@@ -201,6 +213,26 @@ router.post("/students/:studentId/books", requireAuth, async (req, res) => {
     [id, student.id, source, (title || "").trim()],
   );
   res.status(201).json({
+    id: row.id,
+    studentId: row.student_id,
+    source: row.source,
+    title: row.title,
+    dateAdded: row.date_added,
+  });
+});
+
+router.patch("/books/:bookId", requireAuth, async (req, res) => {
+  const book = await findBookForTeacher(req.params.bookId, req.teacher.id);
+  if (!book) return res.status(404).json({ error: "Book not found" });
+  const { source, title } = req.body || {};
+  if (source !== "WonderRoom" && source !== "Others") {
+    return res.status(400).json({ error: "source must be WonderRoom or Others" });
+  }
+  const row = await queryOne(
+    "UPDATE book_entries SET source = $1, title = $2 WHERE id = $3 RETURNING *",
+    [source, (title || "").trim(), book.id],
+  );
+  res.json({
     id: row.id,
     studentId: row.student_id,
     source: row.source,

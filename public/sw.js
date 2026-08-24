@@ -1,4 +1,4 @@
-const CACHE_NAME = "reading-race-v1";
+const CACHE_NAME = "reading-race-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -25,6 +25,9 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+
+  // Never cache API calls — they're live, per-teacher data, not app shell.
+  if (new URL(request.url).pathname.startsWith("/api/")) return;
 
   // Navigations: try the network first so a new deploy is picked up,
   // fall back to the cached shell when offline.

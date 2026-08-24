@@ -15,8 +15,9 @@ that finish time.
 - **Frontend**: React + TypeScript (Vite), talking to the backend over `/api`.
 - **Backend**: a single Node.js + Express process, serving both the API and
   the built frontend on one port.
-- **Database**: SQLite (one file on disk — `data/reading-race.db`), via
-  `better-sqlite3`. No separate database server to run.
+- **Database**: Postgres, via a `DATABASE_URL` connection string. Any
+  Postgres host works; [Neon](https://neon.tech) has a reliable free tier
+  and is what these docs walk through.
 - **Auth**: Google sign-in, restricted to your school's email domain. Each
   teacher signs in with their Google account; teachers only see and manage
   their own class(es). The race standings page shows every class's name,
@@ -27,16 +28,33 @@ that finish time.
   but even admins don't edit another teacher's students or book log day to
   day.
 
-This is intentionally the simplest possible shape — one process, one file
-database — so it's easy to run anywhere first and move to something bigger
-(a managed Postgres database, multiple server instances, etc) later without
+This is intentionally the simplest possible shape — one app server process,
+one database — so it's easy to run anywhere and move to something bigger
+(multiple server instances, a paid database tier, etc) later without
 changing how the app is built, only how it's deployed.
+
+## Database setup (Neon, free)
+
+The app server itself doesn't store any data on its own disk — everything
+lives in Postgres, so the app can run on a host with no persistent storage
+(like a free Render web service) without any risk of losing data on
+restart/redeploy.
+
+1. Go to [neon.tech](https://neon.tech) and sign up (a Google account works).
+2. Create a new project — any name and region are fine.
+3. On the project dashboard, find the **connection string** (usually shown
+   right away, or under "Connection Details"). It looks like:
+   `postgresql://user:password@ep-something.region.aws.neon.tech/dbname?sslmode=require`
+4. Copy that whole string — this is your `DATABASE_URL`.
+
+That's the entire database setup. The app creates its own tables
+automatically the first time it starts against that connection string.
 
 ## Running it locally
 
 ```bash
 npm install
-cp .env.example .env   # see "Google sign-in setup" below
+cp .env.example .env   # then fill in DATABASE_URL (see above) and see "Google sign-in setup" below
 npm run dev
 ```
 
@@ -80,33 +98,47 @@ leave that side open-ended (e.g. no deadline yet). This only affects the
 race standings — a teacher's own "My class" view still shows every book
 they've logged.
 
-## Running it in production (on your own small server)
+## Deploying (Render, no terminal needed)
 
-```bash
-npm install
-npm run build      # builds the frontend into dist/
-npm run start       # one Node process, serves the API + the built frontend
-```
+This deploys straight from the GitHub repo through Render's web dashboard —
+no local install, no command line.
 
-Set these environment variables (a `.env` file works, or your host's own
-mechanism):
+1. Do the [Database setup](#database-setup-neon-free) above first and keep
+   the `DATABASE_URL` handy.
+2. Go to [render.com](https://render.com) and sign up (a GitHub account
+   works, and makes step 3 easier).
+3. **New → Web Service**, then connect it to the `kevkim4/reading-race`
+   GitHub repo (grant Render access if it asks) and pick the
+   `claude/reading-race-tracker-oy6g74` branch (or whichever branch has
+   this merged into it by the time you deploy).
+4. Fill in:
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm run start`
+   - **Instance Type**: Free is fine — the app server holds no data of its
+     own, so a free instance restarting doesn't lose anything.
+5. Under **Environment Variables**, add each of these (values from
+   `.env.example` / the sections above):
+   - `DATABASE_URL` — your Neon connection string
+   - `GOOGLE_CLIENT_ID`
+   - `ALLOWED_EMAIL_DOMAIN`
+   - `ADMIN_EMAILS`
+   - `JWT_SECRET` — any long random string
+   - `NODE_ENV` = `production`
+6. Click **Create Web Service**. Render builds and starts it, then gives you
+   a URL like `https://reading-race.onrender.com`.
+7. **Go back to your Google OAuth client** (Google Cloud Console →
+   Credentials) and add that Render URL under **Authorized JavaScript
+   origins** — sign-in won't work from it until you do.
 
-- `GOOGLE_CLIENT_ID` — required for real sign-in (see above; add your
-  server's real URL as an authorized origin).
-- `ALLOWED_EMAIL_DOMAIN` — restricts sign-in to that domain (e.g.
-  `suwoncca.org`). Strongly recommended once this is reachable by anyone
-  outside your school.
-- `ADMIN_EMAILS` — comma-separated teacher emails who get the Admin tab.
-- `JWT_SECRET` — a long random string (see `.env.example` for how to
-  generate one). Without it, sessions reset every time the server restarts.
-- `PORT` — defaults to 3000.
-- `DB_PATH` — defaults to `data/reading-race.db`. Back this file up
-  periodically; it's the only place data lives.
+Free Render web services go to sleep after inactivity and take ~30-60
+seconds to wake up on the next visit — normal, not a bug. If that's ever
+annoying, Render's cheapest paid instance type removes the sleep, with no
+other changes needed (the database is unaffected either way, since it's not
+on the app server itself).
 
 The app is also installable as a PWA (Settings/Share → Add to Home Screen on
-a phone), which needs the site served over HTTPS to fully work — a reverse
-proxy like Caddy or nginx in front of the Node process is the easiest way to
-get that.
+a phone) — this works automatically once the app is on a real HTTPS URL like
+the Render one above.
 
 ## Development
 

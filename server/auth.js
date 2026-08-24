@@ -1,7 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
-import { db } from "./db.js";
+import { queryOne } from "./db.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -52,13 +52,9 @@ const sessionSecret = JWT_SECRET || crypto.randomBytes(32).toString("hex");
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-const upsertTeacher = db.prepare(`
-  INSERT INTO teachers (id, google_sub, email, name)
-  VALUES (@id, @googleSub, @email, @name)
-  ON CONFLICT(google_sub) DO UPDATE SET email = excluded.email, name = excluded.name
-`);
-const getTeacherBySub = db.prepare("SELECT * FROM teachers WHERE google_sub = ?");
-const getTeacherById = db.prepare("SELECT * FROM teachers WHERE id = ?");
+async function getTeacherById(id) {
+  return queryOne("SELECT * FROM teachers WHERE id = $1", [id]);
+}
 
 export async function verifyGoogleCredential(credential) {
   if (!GOOGLE_CLIENT_ID) {
@@ -75,16 +71,14 @@ export async function verifyGoogleCredential(credential) {
   return payload;
 }
 
-export function upsertTeacherFromGoogle(payload) {
-  const existing = getTeacherBySub.get(payload.sub);
-  const id = existing?.id || crypto.randomUUID();
-  upsertTeacher.run({
-    id,
-    googleSub: payload.sub,
-    email: payload.email,
-    name: payload.name || payload.email,
-  });
-  return getTeacherById.get(id);
+export async function upsertTeacherFromGoogle(payload) {
+  return queryOne(
+    `INSERT INTO teachers (id, google_sub, email, name)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name
+     RETURNING *`,
+    [crypto.randomUUID(), payload.sub, payload.email, payload.name || payload.email],
+  );
 }
 
 export function issueSessionCookie(res, teacherId) {
@@ -102,16 +96,19 @@ export function clearSessionCookie(res) {
   res.clearCookie(SESSION_COOKIE, { path: "/" });
 }
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const token = req.cookies?.[SESSION_COOKIE];
   if (!token) return res.status(401).json({ error: "Not signed in" });
   try {
     const { teacherId } = jwt.verify(token, sessionSecret);
-    const teacher = getTeacherById.get(teacherId);
+    const teacher = await getTeacherById(teacherId);
     if (!teacher) return res.status(401).json({ error: "Not signed in" });
     req.teacher = teacher;
     next();
-  } catch {
-    return res.status(401).json({ error: "Session expired" });
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ error: "Session expired" });
+    }
+    next(err);
   }
 }

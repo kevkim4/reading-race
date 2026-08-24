@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db } from "./db.js";
+import { query, queryOne } from "./db.js";
 import {
   requireAuth,
   verifyGoogleCredential,
@@ -37,7 +37,7 @@ router.post("/auth/google", async (req, res) => {
         error: `Only @${ALLOWED_EMAIL_DOMAIN} accounts can sign in to Reading Race`,
       });
     }
-    const teacher = upsertTeacherFromGoogle(payload);
+    const teacher = await upsertTeacherFromGoogle(payload);
     issueSessionCookie(res, teacher.id);
     res.json(teacherResponse(teacher));
   } catch (err) {
@@ -49,7 +49,7 @@ router.post("/auth/google", async (req, res) => {
 // Dev-only stand-in for Google sign-in, used while GOOGLE_CLIENT_ID isn't
 // configured yet so the app can still be tried out end-to-end. Disabled the
 // moment a real client ID is set.
-router.post("/auth/dev-login", (req, res) => {
+router.post("/auth/dev-login", async (req, res) => {
   if (GOOGLE_CLIENT_ID) {
     return res.status(403).json({ error: "Dev login is disabled once Google sign-in is configured" });
   }
@@ -59,7 +59,7 @@ router.post("/auth/dev-login", (req, res) => {
   if (!isEmailAllowed(email)) {
     return res.status(403).json({ error: `Only @${ALLOWED_EMAIL_DOMAIN} accounts can sign in to Reading Race` });
   }
-  const teacher = upsertTeacherFromGoogle({ sub: `dev:${email}`, email, name });
+  const teacher = await upsertTeacherFromGoogle({ sub: `dev:${email}`, email, name });
   issueSessionCookie(res, teacher.id);
   res.json(teacherResponse(teacher));
 });
@@ -82,21 +82,29 @@ function requireAdmin(req, res, next) {
 
 // ---- Ownership-checked lookups ----
 
-const findClassForTeacher = db.prepare("SELECT * FROM classes WHERE id = ? AND teacher_id = ?");
-const findStudentForTeacher = db.prepare(`
-  SELECT students.* FROM students
-  JOIN classes ON classes.id = students.class_id
-  WHERE students.id = ? AND classes.teacher_id = ?
-`);
-const findBookForTeacher = db.prepare(`
-  SELECT book_entries.* FROM book_entries
-  JOIN students ON students.id = book_entries.student_id
-  JOIN classes ON classes.id = students.class_id
-  WHERE book_entries.id = ? AND classes.teacher_id = ?
-`);
+function findClassForTeacher(classId, teacherId) {
+  return queryOne("SELECT * FROM classes WHERE id = $1 AND teacher_id = $2", [classId, teacherId]);
+}
+function findStudentForTeacher(studentId, teacherId) {
+  return queryOne(
+    `SELECT students.* FROM students
+     JOIN classes ON classes.id = students.class_id
+     WHERE students.id = $1 AND classes.teacher_id = $2`,
+    [studentId, teacherId],
+  );
+}
+function findBookForTeacher(bookId, teacherId) {
+  return queryOne(
+    `SELECT book_entries.* FROM book_entries
+     JOIN students ON students.id = book_entries.student_id
+     JOIN classes ON classes.id = students.class_id
+     WHERE book_entries.id = $1 AND classes.teacher_id = $2`,
+    [bookId, teacherId],
+  );
+}
 
-function requireOwnedClass(req, res, classId) {
-  const cls = findClassForTeacher.get(classId, req.teacher.id);
+async function requireOwnedClass(req, res, classId) {
+  const cls = await findClassForTeacher(classId, req.teacher.id);
   if (!cls) {
     res.status(404).json({ error: "Class not found" });
     return null;
@@ -106,48 +114,48 @@ function requireOwnedClass(req, res, classId) {
 
 // ---- Classes ----
 
-const listClasses = db.prepare("SELECT * FROM classes WHERE teacher_id = ? ORDER BY created_at ASC");
-const insertClass = db.prepare("INSERT INTO classes (id, teacher_id, name) VALUES (?, ?, ?)");
-const deleteClass = db.prepare("DELETE FROM classes WHERE id = ? AND teacher_id = ?");
-
-router.get("/classes", requireAuth, (req, res) => {
-  res.json(listClasses.all(req.teacher.id).map((c) => ({ id: c.id, name: c.name })));
+router.get("/classes", requireAuth, async (req, res) => {
+  const rows = await query("SELECT * FROM classes WHERE teacher_id = $1 ORDER BY created_at ASC", [
+    req.teacher.id,
+  ]);
+  res.json(rows.map((c) => ({ id: c.id, name: c.name })));
 });
 
-router.post("/classes", requireAuth, (req, res) => {
+router.post("/classes", requireAuth, async (req, res) => {
   const name = (req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "Class name is required" });
   const id = crypto.randomUUID();
-  insertClass.run(id, req.teacher.id, name);
+  await query("INSERT INTO classes (id, teacher_id, name) VALUES ($1, $2, $3)", [
+    id,
+    req.teacher.id,
+    name,
+  ]);
   res.status(201).json({ id, name });
 });
 
-router.delete("/classes/:classId", requireAuth, (req, res) => {
-  if (!requireOwnedClass(req, res, req.params.classId)) return;
-  deleteClass.run(req.params.classId, req.teacher.id);
+router.delete("/classes/:classId", requireAuth, async (req, res) => {
+  if (!(await requireOwnedClass(req, res, req.params.classId))) return;
+  await query("DELETE FROM classes WHERE id = $1 AND teacher_id = $2", [
+    req.params.classId,
+    req.teacher.id,
+  ]);
   res.status(204).end();
 });
 
 // ---- Students + books (scoped to one class) ----
 
-const listStudents = db.prepare("SELECT * FROM students WHERE class_id = ? ORDER BY created_at ASC");
-const insertStudent = db.prepare("INSERT INTO students (id, class_id, name) VALUES (?, ?, ?)");
-const deleteStudent = db.prepare("DELETE FROM students WHERE id = ?");
-const listBooksForClass = db.prepare(`
-  SELECT book_entries.* FROM book_entries
-  JOIN students ON students.id = book_entries.student_id
-  WHERE students.class_id = ?
-  ORDER BY date_added ASC
-`);
-const insertBook = db.prepare(
-  "INSERT INTO book_entries (id, student_id, source, title) VALUES (?, ?, ?, ?)",
-);
-const deleteBook = db.prepare("DELETE FROM book_entries WHERE id = ?");
-
-router.get("/classes/:classId/data", requireAuth, (req, res) => {
-  if (!requireOwnedClass(req, res, req.params.classId)) return;
-  const students = listStudents.all(req.params.classId);
-  const books = listBooksForClass.all(req.params.classId);
+router.get("/classes/:classId/data", requireAuth, async (req, res) => {
+  if (!(await requireOwnedClass(req, res, req.params.classId))) return;
+  const students = await query("SELECT * FROM students WHERE class_id = $1 ORDER BY created_at ASC", [
+    req.params.classId,
+  ]);
+  const books = await query(
+    `SELECT book_entries.* FROM book_entries
+     JOIN students ON students.id = book_entries.student_id
+     WHERE students.class_id = $1
+     ORDER BY date_added ASC`,
+    [req.params.classId],
+  );
   res.json({
     students: students.map((s) => ({ id: s.id, name: s.name })),
     books: books.map((b) => ({
@@ -160,32 +168,38 @@ router.get("/classes/:classId/data", requireAuth, (req, res) => {
   });
 });
 
-router.post("/classes/:classId/students", requireAuth, (req, res) => {
-  if (!requireOwnedClass(req, res, req.params.classId)) return;
+router.post("/classes/:classId/students", requireAuth, async (req, res) => {
+  if (!(await requireOwnedClass(req, res, req.params.classId))) return;
   const name = (req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "Student name is required" });
   const id = crypto.randomUUID();
-  insertStudent.run(id, req.params.classId, name);
+  await query("INSERT INTO students (id, class_id, name) VALUES ($1, $2, $3)", [
+    id,
+    req.params.classId,
+    name,
+  ]);
   res.status(201).json({ id, name });
 });
 
-router.delete("/students/:studentId", requireAuth, (req, res) => {
-  const student = findStudentForTeacher.get(req.params.studentId, req.teacher.id);
+router.delete("/students/:studentId", requireAuth, async (req, res) => {
+  const student = await findStudentForTeacher(req.params.studentId, req.teacher.id);
   if (!student) return res.status(404).json({ error: "Student not found" });
-  deleteStudent.run(student.id);
+  await query("DELETE FROM students WHERE id = $1", [student.id]);
   res.status(204).end();
 });
 
-router.post("/students/:studentId/books", requireAuth, (req, res) => {
-  const student = findStudentForTeacher.get(req.params.studentId, req.teacher.id);
+router.post("/students/:studentId/books", requireAuth, async (req, res) => {
+  const student = await findStudentForTeacher(req.params.studentId, req.teacher.id);
   if (!student) return res.status(404).json({ error: "Student not found" });
   const { source, title } = req.body || {};
   if (source !== "WonderRoom" && source !== "Others") {
     return res.status(400).json({ error: "source must be WonderRoom or Others" });
   }
   const id = crypto.randomUUID();
-  insertBook.run(id, student.id, source, (title || "").trim());
-  const row = db.prepare("SELECT * FROM book_entries WHERE id = ?").get(id);
+  const row = await queryOne(
+    "INSERT INTO book_entries (id, student_id, source, title) VALUES ($1, $2, $3, $4) RETURNING *",
+    [id, student.id, source, (title || "").trim()],
+  );
   res.status(201).json({
     id: row.id,
     studentId: row.student_id,
@@ -195,22 +209,17 @@ router.post("/students/:studentId/books", requireAuth, (req, res) => {
   });
 });
 
-router.delete("/books/:bookId", requireAuth, (req, res) => {
-  const book = findBookForTeacher.get(req.params.bookId, req.teacher.id);
+router.delete("/books/:bookId", requireAuth, async (req, res) => {
+  const book = await findBookForTeacher(req.params.bookId, req.teacher.id);
   if (!book) return res.status(404).json({ error: "Book not found" });
-  deleteBook.run(book.id);
+  await query("DELETE FROM book_entries WHERE id = $1", [book.id]);
   res.status(204).end();
 });
 
 // ---- Race window (admin-configured start/deadline dates) ----
 
-const getRaceSettingsRow = db.prepare("SELECT start_date, deadline_date FROM race_settings WHERE id = 1");
-const setRaceSettingsRow = db.prepare(
-  "UPDATE race_settings SET start_date = ?, deadline_date = ? WHERE id = 1",
-);
-
-function getRaceWindow() {
-  const row = getRaceSettingsRow.get();
+async function getRaceWindow() {
+  const row = await queryOne("SELECT start_date, deadline_date FROM race_settings WHERE id = 1");
   return { startDate: row.start_date || null, deadlineDate: row.deadline_date || null };
 }
 
@@ -229,11 +238,11 @@ function withinRaceWindow(books, window) {
   return books.filter((b) => (!start || b.date_added >= start) && (!end || b.date_added <= end));
 }
 
-router.get("/race-settings", requireAuth, (req, res) => {
-  res.json(raceStatusFor(getRaceWindow()));
+router.get("/race-settings", requireAuth, async (req, res) => {
+  res.json(raceStatusFor(await getRaceWindow()));
 });
 
-router.put("/race-settings", requireAuth, requireAdmin, (req, res) => {
+router.put("/race-settings", requireAuth, requireAdmin, async (req, res) => {
   const { startDate, deadlineDate } = req.body || {};
   const datePattern = /^\d{4}-\d{2}-\d{2}$/;
   for (const value of [startDate, deadlineDate]) {
@@ -246,71 +255,76 @@ router.put("/race-settings", requireAuth, requireAdmin, (req, res) => {
   if (start && deadline && start > deadline) {
     return res.status(400).json({ error: "Start date must be before the deadline" });
   }
-  setRaceSettingsRow.run(start, deadline);
-  res.json(raceStatusFor(getRaceWindow()));
+  await query("UPDATE race_settings SET start_date = $1, deadline_date = $2 WHERE id = 1", [
+    start,
+    deadline,
+  ]);
+  res.json(raceStatusFor(await getRaceWindow()));
 });
 
 // ---- Admin: oversight across every teacher's classes ----
 
-const allClassesForAdmin = db.prepare(`
-  SELECT classes.id, classes.name, classes.created_at, teachers.name AS teacher_name, teachers.email AS teacher_email,
-    (SELECT COUNT(*) FROM students WHERE students.class_id = classes.id) AS student_count
-  FROM classes JOIN teachers ON teachers.id = classes.teacher_id
-  ORDER BY classes.created_at ASC
-`);
-const deleteAnyClass = db.prepare("DELETE FROM classes WHERE id = ?");
-
-router.get("/admin/classes", requireAuth, requireAdmin, (req, res) => {
+router.get("/admin/classes", requireAuth, requireAdmin, async (req, res) => {
+  const rows = await query(`
+    SELECT classes.id, classes.name, classes.created_at, teachers.name AS teacher_name, teachers.email AS teacher_email,
+      (SELECT COUNT(*) FROM students WHERE students.class_id = classes.id) AS student_count
+    FROM classes JOIN teachers ON teachers.id = classes.teacher_id
+    ORDER BY classes.created_at ASC
+  `);
   res.json(
-    allClassesForAdmin.all().map((c) => ({
+    rows.map((c) => ({
       id: c.id,
       name: c.name,
       teacherName: c.teacher_name,
       teacherEmail: c.teacher_email,
-      studentCount: c.student_count,
+      studentCount: Number(c.student_count),
       createdAt: c.created_at,
     })),
   );
 });
 
-router.delete("/admin/classes/:classId", requireAuth, requireAdmin, (req, res) => {
-  deleteAnyClass.run(req.params.classId);
+router.delete("/admin/classes/:classId", requireAuth, requireAdmin, async (req, res) => {
+  await query("DELETE FROM classes WHERE id = $1", [req.params.classId]);
   res.status(204).end();
 });
 
 // ---- Cross-class leaderboard (the "who finishes the race first" award) ----
 
-const allClassesWithTeacher = db.prepare(`
-  SELECT classes.id, classes.name, teachers.name AS teacher_name
-  FROM classes JOIN teachers ON teachers.id = classes.teacher_id
-  ORDER BY classes.created_at ASC
-`);
-const studentsForClass = db.prepare("SELECT id FROM students WHERE class_id = ?");
-const booksForStudentAsc = db.prepare(
-  "SELECT source, date_added FROM book_entries WHERE student_id = ? ORDER BY date_added ASC",
-);
+router.get("/leaderboard", requireAuth, async (req, res) => {
+  const window = await getRaceWindow();
+  const classes = await query(`
+    SELECT classes.id, classes.name, teachers.name AS teacher_name
+    FROM classes JOIN teachers ON teachers.id = classes.teacher_id
+    ORDER BY classes.created_at ASC
+  `);
 
-router.get("/leaderboard", requireAuth, (req, res) => {
-  const window = getRaceWindow();
-  const rows = allClassesWithTeacher.all().map((cls) => {
-    const students = studentsForClass.all(cls.id);
-    const completionTimes = students.map((s) =>
-      studentCompletionTime(withinRaceWindow(booksForStudentAsc.all(s.id), window)),
-    );
-    const finishedCount = completionTimes.filter(Boolean).length;
-    const totalStudents = students.length;
-    const allFinished = totalStudents > 0 && finishedCount === totalStudents;
-    const classFinishTime = allFinished ? completionTimes.reduce((a, b) => (a > b ? a : b)) : null;
-    return {
-      classId: cls.id,
-      className: cls.name,
-      teacherName: cls.teacher_name,
-      totalStudents,
-      finishedCount,
-      allFinished,
-      classFinishTime,
-    };
-  });
+  const rows = await Promise.all(
+    classes.map(async (cls) => {
+      const students = await query("SELECT id FROM students WHERE class_id = $1", [cls.id]);
+      const completionTimes = await Promise.all(
+        students.map(async (s) => {
+          const books = await query(
+            "SELECT source, date_added FROM book_entries WHERE student_id = $1 ORDER BY date_added ASC",
+            [s.id],
+          );
+          return studentCompletionTime(withinRaceWindow(books, window));
+        }),
+      );
+      const finishedCount = completionTimes.filter(Boolean).length;
+      const totalStudents = students.length;
+      const allFinished = totalStudents > 0 && finishedCount === totalStudents;
+      const classFinishTime = allFinished ? completionTimes.reduce((a, b) => (a > b ? a : b)) : null;
+      return {
+        classId: cls.id,
+        className: cls.name,
+        teacherName: cls.teacher_name,
+        totalStudents,
+        finishedCount,
+        allFinished,
+        classFinishTime,
+      };
+    }),
+  );
 
   rows.sort((a, b) => {
     if (a.allFinished && b.allFinished) return a.classFinishTime < b.classFinishTime ? -1 : 1;

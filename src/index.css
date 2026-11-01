@@ -856,18 +856,71 @@ td.num {
   margin-bottom: 14px;
 }
 
-.viewer-summary {
-  margin: 0 0 20px;
-  font-size: 15px;
-  color: var(--text-secondary);
-}
-
-.viewer-summary strong {
-  color: var(--text-primary);
-  font-size: 18px;
-}
-
 .viewer-updated {
   text-align: center;
   font-size: 12px;
+}
+
+/* Class total (the number for the physical board) */
+.class-total h2 {
+  margin-bottom: 6px;
+}
+
+.class-total-figure {
+  margin: 0 0 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.class-total-value {
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.class-total-of {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.meter {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--gridline);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text-secondary);
+  min-width: 2px;
+}
+
+.class-total-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.class-total-meta strong {
+  color: var(--text-primary);
+}
+
+.class-total-rule {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.counts-cell {
+  font-weight: 700;
 }

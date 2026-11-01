@@ -11,6 +11,7 @@ import { Leaderboard } from "./components/Leaderboard";
 import { AdminPanel } from "./components/AdminPanel";
 import { RaceStatusBanner } from "./components/RaceStatusBanner";
 import { SharePanel } from "./components/SharePanel";
+import { ClassTotal } from "./components/ClassTotal";
 import { useClassData } from "./useClassData";
 import { computeStudentStats } from "./aggregate";
 import { api, type ClassSummary } from "./api";
@@ -156,6 +157,8 @@ function SignedInApp({
             <p className="empty-hint">Create your first class above to get started.</p>
           ) : (
             <>
+              <ClassTotal stats={stats} />
+
               <div className="input-row">
                 <StudentRoster
                   students={students}

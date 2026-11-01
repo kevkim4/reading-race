@@ -20,6 +20,9 @@ export function ReadingTable({ stats }: Props) {
                 <th scope="col">WonderRoom</th>
                 <th scope="col">Others</th>
                 <th scope="col">Total</th>
+                <th scope="col" title="Books that count toward the class total (max 10)">
+                  Counts
+                </th>
                 <th scope="col">Status</th>
               </tr>
             </thead>
@@ -35,6 +38,7 @@ export function ReadingTable({ stats }: Props) {
                   </td>
                   <td className="num">{s.others}</td>
                   <td className="num">{s.total}</td>
+                  <td className="num counts-cell">{s.counted}</td>
                   <td>
                     {s.metAllGoals ? (
                       <span className="badge badge-good">✓ Goal met</span>

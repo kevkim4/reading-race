@@ -9,6 +9,35 @@ export interface StudentStats {
   metWonderRoomGoal: boolean;
   metTotalGoal: boolean;
   metAllGoals: boolean;
+  /** Books that count toward the race: at most 10, of which at most 8 can be non-WonderRoom. */
+  counted: number;
+}
+
+/**
+ * A student's 10 race spots: 8 that any book can fill, plus 2 that only
+ * WonderRoom books can fill. Extra WonderRoom books may also take the
+ * "any book" spots. So 4 WR + 11 others = 10, 0 WR + 12 others = 8,
+ * 1 WR + 12 others = 9. Reaching 10 is exactly the same as meeting the goal.
+ */
+export function countedBooks(wonderRoom: number, others: number): number {
+  const anyBookSpots = GOAL_TOTAL_BOOKS - GOAL_WONDERROOM_BOOKS;
+  return Math.min(GOAL_TOTAL_BOOKS, wonderRoom + Math.min(others, anyBookSpots));
+}
+
+export interface ClassTotals {
+  counted: number;
+  possible: number;
+  finished: number;
+  readers: number;
+}
+
+export function classTotals(stats: StudentStats[]): ClassTotals {
+  return {
+    counted: stats.reduce((sum, s) => sum + s.counted, 0),
+    possible: stats.length * GOAL_TOTAL_BOOKS,
+    finished: stats.filter((s) => s.metAllGoals).length,
+    readers: stats.length,
+  };
 }
 
 export function computeStudentStats(
@@ -32,6 +61,7 @@ export function computeStudentStats(
         metWonderRoomGoal,
         metTotalGoal,
         metAllGoals: metWonderRoomGoal && metTotalGoal,
+        counted: countedBooks(wonderRoom, others),
       };
     })
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));

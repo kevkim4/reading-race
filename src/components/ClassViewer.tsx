@@ -3,6 +3,7 @@ import { api, type PublicClassView } from "../api";
 import { computeStudentStats } from "../aggregate";
 import { GOAL_TOTAL_BOOKS, GOAL_WONDERROOM_BOOKS } from "../types";
 import { RaceBanner } from "./RaceStatusBanner";
+import { ClassTotal } from "./ClassTotal";
 import { ReadingChart } from "./ReadingChart";
 import { ReadingTable } from "./ReadingTable";
 
@@ -46,7 +47,6 @@ export function ClassViewer({ token }: { token: string }) {
     () => (data ? computeStudentStats(data.students, data.books) : []),
     [data],
   );
-  const finished = stats.filter((s) => s.metAllGoals).length;
 
   if (state === "loading") {
     return (
@@ -81,17 +81,10 @@ export function ClassViewer({ token }: { token: string }) {
           everyone in our class gets there, we finish the race!
         </p>
         <RaceBanner status={data.raceStatus} />
-        {stats.length > 0 && (
-          <p className="viewer-summary">
-            <strong>
-              {finished} of {stats.length}
-            </strong>{" "}
-            {stats.length === 1 ? "reader has" : "readers have"} reached the goal
-          </p>
-        )}
       </header>
 
       <main>
+        <ClassTotal stats={stats} audience="student" />
         <ReadingChart stats={stats} />
         <ReadingTable stats={stats} />
         {updatedAt && (

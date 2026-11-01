@@ -56,6 +56,10 @@ export async function migrate() {
       date_added TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- Unguessable token for the class's public, read-only student view.
+    -- NULL means sharing is off.
+    ALTER TABLE classes ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
+
     CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
     CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
     CREATE INDEX IF NOT EXISTS idx_books_student ON book_entries(student_id);

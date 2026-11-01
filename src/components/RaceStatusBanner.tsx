@@ -1,3 +1,4 @@
+import type { RaceStatus } from "../api";
 import { useRaceStatus } from "../RaceStatusContext";
 
 function formatRaceDate(iso: string): string {
@@ -8,9 +9,7 @@ function formatRaceDate(iso: string): string {
   });
 }
 
-export function RaceStatusBanner() {
-  const { status } = useRaceStatus();
-
+export function RaceBanner({ status }: { status: RaceStatus | null }) {
   if (!status || (!status.startDate && !status.deadlineDate)) return null;
 
   let message: string;
@@ -30,4 +29,10 @@ export function RaceStatusBanner() {
   }
 
   return <div className={`race-banner race-banner-${tone}`}>🏁 {message}</div>;
+}
+
+// Signed-in teacher view: reads the shared race status (refreshes when an admin saves).
+export function RaceStatusBanner() {
+  const { status } = useRaceStatus();
+  return <RaceBanner status={status} />;
 }

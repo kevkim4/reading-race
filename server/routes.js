@@ -118,7 +118,7 @@ router.get("/classes", requireAuth, async (req, res) => {
   const rows = await query("SELECT * FROM classes WHERE teacher_id = $1 ORDER BY created_at ASC", [
     req.teacher.id,
   ]);
-  res.json(rows.map((c) => ({ id: c.id, name: c.name })));
+  res.json(rows.map((c) => ({ id: c.id, name: c.name, shareToken: c.share_token })));
 });
 
 router.post("/classes", requireAuth, async (req, res) => {
@@ -130,7 +130,45 @@ router.post("/classes", requireAuth, async (req, res) => {
     req.teacher.id,
     name,
   ]);
-  res.status(201).json({ id, name });
+  res.status(201).json({ id, name, shareToken: null });
+});
+
+// ---- Student view sharing (public read-only link per class) ----
+
+// Turns sharing on, or replaces the existing link (old link stops working).
+router.post("/classes/:classId/share", requireAuth, async (req, res) => {
+  if (!(await requireOwnedClass(req, res, req.params.classId))) return;
+  const token = crypto.randomBytes(18).toString("base64url");
+  await query("UPDATE classes SET share_token = $1 WHERE id = $2", [token, req.params.classId]);
+  res.json({ shareToken: token });
+});
+
+router.delete("/classes/:classId/share", requireAuth, async (req, res) => {
+  if (!(await requireOwnedClass(req, res, req.params.classId))) return;
+  await query("UPDATE classes SET share_token = NULL WHERE id = $1", [req.params.classId]);
+  res.status(204).end();
+});
+
+// No sign-in: anyone with the link sees the class's names and book counts.
+// Book titles and dates are deliberately not included.
+router.get("/public/classes/:token", async (req, res) => {
+  const cls = await queryOne("SELECT id, name FROM classes WHERE share_token = $1", [
+    req.params.token,
+  ]);
+  if (!cls) return res.status(404).json({ error: "This link isn't active" });
+  const students = await query("SELECT id, name FROM students WHERE class_id = $1", [cls.id]);
+  const books = await query(
+    `SELECT book_entries.student_id, book_entries.source FROM book_entries
+     JOIN students ON students.id = book_entries.student_id
+     WHERE students.class_id = $1`,
+    [cls.id],
+  );
+  res.json({
+    className: cls.name,
+    raceStatus: raceStatusFor(await getRaceWindow()),
+    students: students.map((s) => ({ id: s.id, name: s.name })),
+    books: books.map((b) => ({ studentId: b.student_id, source: b.source })),
+  });
 });
 
 router.delete("/classes/:classId", requireAuth, async (req, res) => {

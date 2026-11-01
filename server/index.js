@@ -20,6 +20,12 @@ app.use("/api", (req, res, next) => {
 });
 app.use("/api", router);
 
+// Student view links show names, so keep them out of search engines.
+app.use("/view", (req, res, next) => {
+  res.set("X-Robots-Tag", "noindex, nofollow");
+  next();
+});
+
 app.use(express.static(DIST_DIR));
 app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(DIST_DIR, "index.html"));

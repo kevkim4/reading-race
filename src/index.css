@@ -617,11 +617,18 @@ button {
   color: var(--text-muted);
 }
 
+.chart-plot {
+  /* Shared by the rows and the goal line so they stay aligned. */
+  --label-col: 120px;
+  --col-gap: 10px;
+  --value-reserve: 44px; /* room right of a full-length bar for "10 ✓" */
+}
+
 .chart-row {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: var(--label-col) 1fr;
   align-items: center;
-  gap: 10px;
+  gap: var(--col-gap);
   min-height: 32px;
 }
 
@@ -643,6 +650,8 @@ button {
   align-items: center;
   gap: 8px;
   height: 24px;
+  /* Bar widths are % of the content box; the value label sits in this padding. */
+  padding-right: var(--value-reserve);
 }
 
 .chart-bar {
@@ -767,4 +776,98 @@ td.num {
 .badge-pending {
   color: var(--text-secondary);
   background: var(--page-plane);
+}
+
+/* Share with students */
+.share-off {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.share-panel button.primary {
+  background: var(--series-wonderroom);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  flex: none;
+}
+
+.share-panel button.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.share-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.share-link-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.share-link-row a.link-button {
+  text-decoration: none;
+}
+
+.share-note {
+  margin-top: 10px;
+}
+
+.share-actions {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.link-button.danger {
+  color: var(--text-secondary);
+}
+
+.link-button.danger:hover {
+  color: var(--status-warning);
+}
+
+.link-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Public student view */
+.viewer-eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--series-wonderroom);
+}
+
+.viewer .app-header .subtitle {
+  margin-bottom: 14px;
+}
+
+.viewer-summary {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.viewer-summary strong {
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.viewer-updated {
+  text-align: center;
+  font-size: 12px;
 }

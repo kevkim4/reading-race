@@ -46,6 +46,14 @@ export interface AdminClass {
 export interface ClassSummary {
   id: string;
   name: string;
+  shareToken: string | null;
+}
+
+export interface PublicClassView {
+  className: string;
+  raceStatus: RaceStatus;
+  students: ApiStudent[];
+  books: { studentId: string; source: BookSource }[];
 }
 
 export interface ApiStudent {
@@ -89,6 +97,11 @@ export const api = {
   createClass: (name: string) =>
     request<ClassSummary>("/classes", { method: "POST", body: JSON.stringify({ name }) }),
   deleteClass: (classId: string) => request<void>(`/classes/${classId}`, { method: "DELETE" }),
+  enableShare: (classId: string) =>
+    request<{ shareToken: string }>(`/classes/${classId}/share`, { method: "POST" }),
+  disableShare: (classId: string) => request<void>(`/classes/${classId}/share`, { method: "DELETE" }),
+  getPublicClass: (token: string) =>
+    request<PublicClassView>(`/public/classes/${encodeURIComponent(token)}`),
 
   getClassData: (classId: string) =>
     request<{ students: ApiStudent[]; books: ApiBook[] }>(`/classes/${classId}/data`),

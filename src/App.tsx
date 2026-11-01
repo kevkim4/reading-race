@@ -10,6 +10,7 @@ import { ReadingTable } from "./components/ReadingTable";
 import { Leaderboard } from "./components/Leaderboard";
 import { AdminPanel } from "./components/AdminPanel";
 import { RaceStatusBanner } from "./components/RaceStatusBanner";
+import { SharePanel } from "./components/SharePanel";
 import { useClassData } from "./useClassData";
 import { computeStudentStats } from "./aggregate";
 import { api, type ClassSummary } from "./api";
@@ -75,6 +76,19 @@ function SignedInApp({
   const { students, books, addStudent, renameStudent, removeStudent, addBook, updateBook, removeBook } =
     useClassData(selectedClassId);
   const stats = useMemo(() => computeStudentStats(students, books), [students, books]);
+  const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
+
+  async function handleEnableShare() {
+    if (!selectedClassId) return;
+    await api.enableShare(selectedClassId);
+    await loadClasses();
+  }
+
+  async function handleDisableShare() {
+    if (!selectedClassId) return;
+    await api.disableShare(selectedClassId);
+    await loadClasses();
+  }
 
   return (
     <div className="app">
@@ -160,6 +174,15 @@ function SignedInApp({
 
               <ReadingChart stats={stats} />
               <ReadingTable stats={stats} />
+
+              {selectedClass && (
+                <SharePanel
+                  className={selectedClass.name}
+                  shareToken={selectedClass.shareToken}
+                  onEnable={handleEnableShare}
+                  onDisable={handleDisableShare}
+                />
+              )}
             </>
           ))}
 

@@ -13,7 +13,7 @@ export interface StudentStats {
 
 export function computeStudentStats(
   students: Student[],
-  books: BookEntry[],
+  books: Pick<BookEntry, "studentId" | "source">[],
 ): StudentStats[] {
   return students
     .map((student) => {

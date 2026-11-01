@@ -3,12 +3,20 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext.tsx'
+import { ClassViewer } from './components/ClassViewer.tsx'
+
+// /view/<token> is the public, no-sign-in student page; everything else is the teacher app.
+const viewMatch = window.location.pathname.match(/^\/view\/([^/]+)\/?$/)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    {viewMatch ? (
+      <ClassViewer token={decodeURIComponent(viewMatch[1])} />
+    ) : (
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    )}
   </StrictMode>,
 )
 

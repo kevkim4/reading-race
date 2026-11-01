@@ -14,7 +14,9 @@ function niceMax(maxTotal: number): number {
 export function ReadingChart({ stats }: Props) {
   const maxTotal = stats.reduce((m, s) => Math.max(m, s.total), 0);
   const xMax = niceMax(maxTotal);
-  const goalPct = (GOAL_TOTAL_BOOKS / xMax) * 100;
+  // The goal line lives in the same coordinate space as the bars: it starts
+  // after the name column and spans only the bar track (not the value label).
+  const goalLeft = `calc(var(--label-col) + var(--col-gap) + (100% - var(--label-col) - var(--col-gap) - var(--value-reserve)) * ${GOAL_TOTAL_BOOKS / xMax})`;
 
   return (
     <section className="panel" aria-labelledby="chart-heading">
@@ -34,8 +36,8 @@ export function ReadingChart({ stats }: Props) {
         <p className="empty-hint">Add students and log books to see the chart.</p>
       ) : (
         <div className="chart">
-          <div className="chart-plot" style={{ ["--goal-pct" as string]: `${goalPct}%` }}>
-            <div className="goal-line" style={{ left: `${goalPct}%` }}>
+          <div className="chart-plot">
+            <div className="goal-line" style={{ left: goalLeft }}>
               <span className="goal-label">Goal: {GOAL_TOTAL_BOOKS} books</span>
             </div>
             {stats.map((s) => {

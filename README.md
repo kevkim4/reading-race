@@ -98,6 +98,19 @@ leave that side open-ended (e.g. no deadline yet). This only affects the
 race standings — a teacher's own "My class" view still shows every book
 they've logged.
 
+## Student view links
+
+Each class can have a read-only link students open without signing in, for
+example posted in Google Classroom. On **My class**, scroll to **Share with
+students** and click **Create student link**. The page shows that class's
+chart and progress table (student names and book counts, never book titles)
+and refreshes itself every minute. Race standings stay teachers-only.
+
+**Make a new link** replaces it (the old one stops working right away), and
+**Turn off link** disables it. Links are long random codes, and the page
+asks search engines not to index it, but anyone who has the link can open
+it, so make a new one if it gets shared outside your class.
+
 ## Deploying (Render, no terminal needed)
 
 This deploys straight from the GitHub repo through Render's web dashboard —

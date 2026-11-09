@@ -203,7 +203,8 @@ body {
   border-bottom-color: var(--series-wonderroom);
 }
 
-.standings-hint {
+.standings-hint,
+.empty-hint.standings-hint {
   margin-bottom: 16px;
 }
 
@@ -305,6 +306,8 @@ body {
 
 /* Form controls */
 input[type="text"],
+input[type="email"],
+input:not([type]),
 select {
   font: inherit;
   color: var(--text-primary);
@@ -315,6 +318,8 @@ select {
 }
 
 input[type="text"]:focus,
+input[type="email"]:focus,
+input:not([type]):focus,
 select:focus {
   outline: 2px solid var(--series-wonderroom);
   outline-offset: 1px;
@@ -762,6 +767,7 @@ td.num {
 .badge {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -1000,4 +1006,91 @@ input[type="number"]:focus {
   .title-ar-row .ar-field {
     width: auto;
   }
+}
+
+/* Admin: teachers & classes */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.admin-add-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.admin-add-form .admin-add-grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.admin-add-form .admin-add-grow input {
+  width: 100%;
+}
+
+.admin-add-form button.primary {
+  background: var(--series-wonderroom);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-weight: 600;
+}
+
+.admin-add-form button.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-table {
+  margin-top: 12px;
+}
+
+.admin-table th[scope="row"] {
+  font-weight: 600;
+}
+
+.admin-sub {
+  font-weight: 400;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.admin-badges {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.admin-actions .link-button + .link-button {
+  margin-left: 14px;
+}
+
+.admin-table select {
+  padding: 5px 8px;
+  max-width: 220px;
+}
+
+.inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inline-edit input {
+  padding: 4px 8px;
+  min-width: 0;
+  width: 160px;
 }

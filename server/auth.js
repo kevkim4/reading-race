@@ -71,11 +71,36 @@ export async function verifyGoogleCredential(credential) {
   return payload;
 }
 
+// Finds the teacher for a Google sign-in, in this order:
+//  1. someone who has signed in with this Google account before;
+//  2. a teacher an admin added by email who hasn't signed in yet (claims it,
+//     so the classes the admin assigned are already theirs);
+//  3. otherwise a brand-new teacher.
+// The display name is set once (from Google, or by the admin) and not
+// overwritten on later sign-ins, so an admin's rename sticks.
 export async function upsertTeacherFromGoogle(payload) {
+  const returning = await queryOne(
+    "UPDATE teachers SET email = $2 WHERE google_sub = $1 RETURNING *",
+    [payload.sub, payload.email],
+  );
+  if (returning) return returning;
+
+  const invited = await queryOne(
+    `UPDATE teachers SET google_sub = $1, email = $2
+     WHERE id = (
+       SELECT id FROM teachers
+       WHERE google_sub IS NULL AND lower(email) = lower($2)
+       ORDER BY created_at ASC LIMIT 1
+     )
+     RETURNING *`,
+    [payload.sub, payload.email],
+  );
+  if (invited) return invited;
+
   return queryOne(
     `INSERT INTO teachers (id, google_sub, email, name)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name
+     ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email
      RETURNING *`,
     [crypto.randomUUID(), payload.sub, payload.email, payload.name || payload.email],
   );

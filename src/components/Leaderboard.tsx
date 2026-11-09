@@ -49,7 +49,7 @@ export function Leaderboard() {
                 <tr key={c.classId}>
                   <td className="num">{i + 1}</td>
                   <th scope="row">{c.className}</th>
-                  <td>{c.teacherName}</td>
+                  <td>{c.teacherName ?? <span className="empty-hint">Unassigned</span>}</td>
                   <td className="num">
                     {c.finishedCount} / {c.totalStudents}
                   </td>

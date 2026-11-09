@@ -37,10 +37,23 @@ export interface RaceStatus {
 export interface AdminClass {
   id: string;
   name: string;
-  teacherName: string;
-  teacherEmail: string;
+  /** null = unassigned */
+  teacherId: string | null;
+  teacherName: string | null;
+  teacherEmail: string | null;
   studentCount: number;
   createdAt: string;
+}
+
+export interface AdminTeacher {
+  id: string;
+  name: string;
+  email: string;
+  /** false = added by an admin and hasn't signed in yet */
+  signedIn: boolean;
+  isAdmin: boolean;
+  isYou: boolean;
+  classCount: number;
 }
 
 export interface ClassSummary {
@@ -73,7 +86,7 @@ export interface ApiBook {
 export interface LeaderboardClass {
   classId: string;
   className: string;
-  teacherName: string;
+  teacherName: string | null;
   totalStudents: number;
   finishedCount: number;
   allFinished: boolean;
@@ -134,5 +147,16 @@ export const api = {
     }),
 
   getAdminClasses: () => request<AdminClass[]>("/admin/classes"),
+  createAdminClass: (name: string, teacherId: string | null) =>
+    request<{ id: string }>("/admin/classes", { method: "POST", body: JSON.stringify({ name, teacherId }) }),
+  updateAdminClass: (classId: string, changes: { name?: string; teacherId?: string | null }) =>
+    request<{ id: string }>(`/admin/classes/${classId}`, { method: "PATCH", body: JSON.stringify(changes) }),
   deleteAdminClass: (classId: string) => request<void>(`/admin/classes/${classId}`, { method: "DELETE" }),
+
+  getAdminTeachers: () => request<AdminTeacher[]>("/admin/teachers"),
+  addAdminTeacher: (name: string, email: string) =>
+    request<AdminTeacher>("/admin/teachers", { method: "POST", body: JSON.stringify({ name, email }) }),
+  renameAdminTeacher: (teacherId: string, name: string) =>
+    request<{ id: string }>(`/admin/teachers/${teacherId}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+  removeAdminTeacher: (teacherId: string) => request<void>(`/admin/teachers/${teacherId}`, { method: "DELETE" }),
 };

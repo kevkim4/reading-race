@@ -355,25 +355,131 @@ router.put("/race-settings", requireAuth, requireAdmin, async (req, res) => {
   res.json(raceStatusFor(await getRaceWindow()));
 });
 
-// ---- Admin: oversight across every teacher's classes ----
+// ---- Admin: teachers and classes across the school ----
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function teacherExists(id) {
+  return Boolean(await queryOne("SELECT 1 FROM teachers WHERE id = $1", [id]));
+}
+
+// Validates an optional teacherId from a request body. undefined = not sent.
+async function parseTeacherId(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === "") return { ok: true, value: null };
+  if (typeof value !== "string" || !(await teacherExists(value))) return { ok: false };
+  return { ok: true, value };
+}
+
+router.get("/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
+  const rows = await query(`
+    SELECT teachers.id, teachers.name, teachers.email, teachers.google_sub IS NOT NULL AS signed_in,
+      (SELECT COUNT(*) FROM classes WHERE classes.teacher_id = teachers.id) AS class_count
+    FROM teachers
+    ORDER BY lower(teachers.name) ASC
+  `);
+  res.json(
+    rows.map((t) => ({
+      id: t.id,
+      name: t.name,
+      email: t.email,
+      signedIn: t.signed_in,
+      isAdmin: isAdminEmail(t.email),
+      isYou: t.id === req.teacher.id,
+      classCount: Number(t.class_count),
+    })),
+  );
+});
+
+// Adds a teacher who hasn't signed in yet; their first Google sign-in with
+// this email claims the entry (and any classes assigned to it).
+router.post("/admin/teachers", requireAuth, requireAdmin, async (req, res) => {
+  const name = (req.body?.name || "").trim();
+  const email = (req.body?.email || "").trim().toLowerCase();
+  if (!name) return res.status(400).json({ error: "Teacher name is required" });
+  if (!EMAIL_PATTERN.test(email)) return res.status(400).json({ error: "Enter a valid email address" });
+  if (!isEmailAllowed(email)) {
+    return res.status(400).json({ error: `Teachers need an @${ALLOWED_EMAIL_DOMAIN} email to sign in` });
+  }
+  const existing = await queryOne("SELECT name FROM teachers WHERE lower(email) = $1", [email]);
+  if (existing) {
+    return res.status(409).json({ error: `${existing.name} already uses ${email}` });
+  }
+  const id = crypto.randomUUID();
+  await query("INSERT INTO teachers (id, google_sub, email, name) VALUES ($1, NULL, $2, $3)", [
+    id,
+    email,
+    name,
+  ]);
+  res.status(201).json({ id, name, email, signedIn: false, isAdmin: isAdminEmail(email), isYou: false, classCount: 0 });
+});
+
+router.patch("/admin/teachers/:teacherId", requireAuth, requireAdmin, async (req, res) => {
+  const name = (req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "Teacher name is required" });
+  const row = await queryOne("UPDATE teachers SET name = $1 WHERE id = $2 RETURNING id, name", [
+    name,
+    req.params.teacherId,
+  ]);
+  if (!row) return res.status(404).json({ error: "Teacher not found" });
+  res.json(row);
+});
+
+// Their classes are kept and become unassigned (see the classes.teacher_id FK).
+router.delete("/admin/teachers/:teacherId", requireAuth, requireAdmin, async (req, res) => {
+  if (req.params.teacherId === req.teacher.id) {
+    return res.status(400).json({ error: "You can't remove yourself" });
+  }
+  await query("DELETE FROM teachers WHERE id = $1", [req.params.teacherId]);
+  res.status(204).end();
+});
 
 router.get("/admin/classes", requireAuth, requireAdmin, async (req, res) => {
   const rows = await query(`
-    SELECT classes.id, classes.name, classes.created_at, teachers.name AS teacher_name, teachers.email AS teacher_email,
+    SELECT classes.id, classes.name, classes.created_at, classes.teacher_id,
+      teachers.name AS teacher_name, teachers.email AS teacher_email,
       (SELECT COUNT(*) FROM students WHERE students.class_id = classes.id) AS student_count
-    FROM classes JOIN teachers ON teachers.id = classes.teacher_id
-    ORDER BY classes.created_at ASC
+    FROM classes LEFT JOIN teachers ON teachers.id = classes.teacher_id
+    ORDER BY lower(classes.name) ASC, classes.created_at ASC
   `);
   res.json(
     rows.map((c) => ({
       id: c.id,
       name: c.name,
+      teacherId: c.teacher_id,
       teacherName: c.teacher_name,
       teacherEmail: c.teacher_email,
       studentCount: Number(c.student_count),
       createdAt: c.created_at,
     })),
   );
+});
+
+router.post("/admin/classes", requireAuth, requireAdmin, async (req, res) => {
+  const name = (req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "Class name is required" });
+  const teacher = await parseTeacherId(req.body?.teacherId);
+  if (!teacher.ok) return res.status(400).json({ error: "That teacher no longer exists" });
+  const id = crypto.randomUUID();
+  await query("INSERT INTO classes (id, teacher_id, name) VALUES ($1, $2, $3)", [
+    id,
+    teacher.value ?? null,
+    name,
+  ]);
+  res.status(201).json({ id, name, teacherId: teacher.value ?? null });
+});
+
+// Rename and/or (re)assign a class. teacherId: null unassigns it.
+router.patch("/admin/classes/:classId", requireAuth, requireAdmin, async (req, res) => {
+  const cls = await queryOne("SELECT id, name, teacher_id FROM classes WHERE id = $1", [req.params.classId]);
+  if (!cls) return res.status(404).json({ error: "Class not found" });
+  const name = req.body?.name === undefined ? cls.name : String(req.body.name).trim();
+  if (!name) return res.status(400).json({ error: "Class name is required" });
+  const teacher = await parseTeacherId(req.body?.teacherId);
+  if (!teacher.ok) return res.status(400).json({ error: "That teacher no longer exists" });
+  const teacherId = teacher.value === undefined ? cls.teacher_id : teacher.value;
+  await query("UPDATE classes SET name = $1, teacher_id = $2 WHERE id = $3", [name, teacherId, cls.id]);
+  res.json({ id: cls.id, name, teacherId });
 });
 
 router.delete("/admin/classes/:classId", requireAuth, requireAdmin, async (req, res) => {
@@ -387,7 +493,7 @@ router.get("/leaderboard", requireAuth, async (req, res) => {
   const window = await getRaceWindow();
   const classes = await query(`
     SELECT classes.id, classes.name, teachers.name AS teacher_name
-    FROM classes JOIN teachers ON teachers.id = classes.teacher_id
+    FROM classes LEFT JOIN teachers ON teachers.id = classes.teacher_id
     ORDER BY classes.created_at ASC
   `);
 

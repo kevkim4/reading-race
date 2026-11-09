@@ -62,10 +62,21 @@ function SignedInApp({
     loadClasses();
   }, [loadClasses]);
 
+  // An admin can reassign classes at any time, so re-check this teacher's
+  // classes whenever they come back to the tab.
   useEffect(() => {
-    if (!selectedClassId && classes.length > 0) {
-      setSelectedClassId(classes[0].id);
-    }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadClasses().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadClasses]);
+
+  // Pick a class when none is selected, or when the selected one was
+  // reassigned or deleted by an admin.
+  useEffect(() => {
+    const stillMine = classes.some((c) => c.id === selectedClassId);
+    if (!stillMine) setSelectedClassId(classes[0]?.id ?? null);
   }, [classes, selectedClassId]);
 
   async function handleCreateClass(name: string) {

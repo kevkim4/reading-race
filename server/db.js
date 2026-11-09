@@ -28,7 +28,7 @@ export async function migrate() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS teachers (
       id TEXT PRIMARY KEY,
-      google_sub TEXT UNIQUE NOT NULL,
+      google_sub TEXT UNIQUE, -- NULL until an admin-added teacher first signs in
       email TEXT NOT NULL,
       name TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -36,7 +36,7 @@ export async function migrate() {
 
     CREATE TABLE IF NOT EXISTS classes (
       id TEXT PRIMARY KEY,
-      teacher_id TEXT NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+      teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL, -- NULL = unassigned
       name TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
@@ -59,6 +59,24 @@ export async function migrate() {
     -- Unguessable token for the class's public, read-only student view.
     -- NULL means sharing is off.
     ALTER TABLE classes ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
+
+    -- Admins can add teachers before they ever sign in, and classes can be
+    -- unassigned. Older databases were created with stricter rules: relax them.
+    ALTER TABLE teachers ALTER COLUMN google_sub DROP NOT NULL;
+    ALTER TABLE classes ALTER COLUMN teacher_id DROP NOT NULL;
+    -- Removing a teacher used to delete their classes (and every student and
+    -- book in them). Now their classes just become unassigned.
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'classes_teacher_id_fkey' AND confdeltype = 'c'
+      ) THEN
+        ALTER TABLE classes DROP CONSTRAINT classes_teacher_id_fkey;
+        ALTER TABLE classes ADD CONSTRAINT classes_teacher_id_fkey
+          FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
 
     -- Optional AR (ATOS) book level per logged book, e.g. 3.4. NULL = not entered.
     ALTER TABLE book_entries ADD COLUMN IF NOT EXISTS ar_level NUMERIC(4, 1)

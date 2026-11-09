@@ -23,10 +23,9 @@ that finish time.
   their own class(es). The race standings page shows every class's name,
   teacher, and progress so classes can see how they're doing against each
   other.
-- **Admin**: one or more designated teachers can set the race's start/deadline
-  dates and see (and delete) every class across the school, for cleanup —
-  but even admins don't edit another teacher's students or book log day to
-  day.
+- **Admin**: one or more designated teachers (`ADMIN_EMAILS`) get an
+  **Admin** tab to set the race's start/deadline dates and to manage
+  teachers and classes across the school (see below).
 
 This is intentionally the simplest possible shape — one app server process,
 one database — so it's easy to run anywhere and move to something bigger
@@ -97,6 +96,24 @@ class over the line — the standings are final. Leave either date blank to
 leave that side open-ended (e.g. no deadline yet). This only affects the
 race standings — a teacher's own "My class" view still shows every book
 they've logged.
+
+## Managing teachers and classes (admins)
+
+On the **Admin** tab:
+
+- **Teachers**: add a teacher by name and school email before they've ever
+  signed in (they show as "Not signed in yet"). Their first Google sign-in
+  with that email picks up the entry, along with any classes already
+  assigned to them. Admins can also rename or remove teachers. Removing
+  a teacher keeps their classes, with all students and books, as
+  **Unassigned**.
+- **Classes**: add a class and choose its teacher (or leave it
+  unassigned), switch any class to a different teacher from the dropdown
+  (the class moves with all its students and books), rename it, or delete
+  it.
+
+Each class has one teacher. Teachers can still create their own classes
+from **My class**.
 
 ## AR levels
 

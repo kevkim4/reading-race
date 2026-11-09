@@ -1,6 +1,10 @@
 import { GOAL_TOTAL_BOOKS, GOAL_WONDERROOM_BOOKS } from "../types";
 import type { StudentStats } from "../aggregate";
 
+function formatAr(level: number | null): string {
+  return level == null ? "—" : level.toFixed(1);
+}
+
 interface Props {
   stats: StudentStats[];
 }
@@ -23,6 +27,12 @@ export function ReadingTable({ stats }: Props) {
                 <th scope="col" title="Books that count toward the class total (max 10)">
                   Counts
                 </th>
+                <th scope="col" title="Average AR level of books that have one">
+                  Avg AR
+                </th>
+                <th scope="col" title="AR level of the most recently logged book that has one">
+                  Latest AR
+                </th>
                 <th scope="col">Status</th>
               </tr>
             </thead>
@@ -39,6 +49,8 @@ export function ReadingTable({ stats }: Props) {
                   <td className="num">{s.others}</td>
                   <td className="num">{s.total}</td>
                   <td className="num counts-cell">{s.counted}</td>
+                  <td className="num">{formatAr(s.arAverage)}</td>
+                  <td className="num">{formatAr(s.arLatest)}</td>
                   <td>
                     {s.metAllGoals ? (
                       <span className="badge badge-good">✓ Goal met</span>

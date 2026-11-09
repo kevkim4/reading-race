@@ -60,6 +60,10 @@ export async function migrate() {
     -- NULL means sharing is off.
     ALTER TABLE classes ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
 
+    -- Optional AR (ATOS) book level per logged book, e.g. 3.4. NULL = not entered.
+    ALTER TABLE book_entries ADD COLUMN IF NOT EXISTS ar_level NUMERIC(4, 1)
+      CHECK (ar_level >= 0 AND ar_level <= 20);
+
     CREATE INDEX IF NOT EXISTS idx_classes_teacher ON classes(teacher_id);
     CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
     CREATE INDEX IF NOT EXISTS idx_books_student ON book_entries(student_id);

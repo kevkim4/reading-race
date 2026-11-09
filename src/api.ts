@@ -53,7 +53,7 @@ export interface PublicClassView {
   className: string;
   raceStatus: RaceStatus;
   students: ApiStudent[];
-  books: { studentId: string; source: BookSource }[];
+  books: { studentId: string; source: BookSource; arLevel: number | null }[];
 }
 
 export interface ApiStudent {
@@ -67,6 +67,7 @@ export interface ApiBook {
   source: BookSource;
   title: string;
   dateAdded: string;
+  arLevel: number | null;
 }
 
 export interface LeaderboardClass {
@@ -111,10 +112,16 @@ export const api = {
     request<ApiStudent>(`/students/${studentId}`, { method: "PATCH", body: JSON.stringify({ name }) }),
   removeStudent: (studentId: string) => request<void>(`/students/${studentId}`, { method: "DELETE" }),
 
-  addBook: (studentId: string, source: BookSource, title: string) =>
-    request<ApiBook>(`/students/${studentId}/books`, { method: "POST", body: JSON.stringify({ source, title }) }),
-  updateBook: (bookId: string, source: BookSource, title: string) =>
-    request<ApiBook>(`/books/${bookId}`, { method: "PATCH", body: JSON.stringify({ source, title }) }),
+  addBook: (studentId: string, source: BookSource, title: string, arLevel: number | null) =>
+    request<ApiBook>(`/students/${studentId}/books`, {
+      method: "POST",
+      body: JSON.stringify({ source, title, arLevel }),
+    }),
+  updateBook: (bookId: string, source: BookSource, title: string, arLevel: number | null) =>
+    request<ApiBook>(`/books/${bookId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ source, title, arLevel }),
+    }),
   removeBook: (bookId: string) => request<void>(`/books/${bookId}`, { method: "DELETE" }),
 
   getLeaderboard: () => request<LeaderboardResponse>("/leaderboard"),

@@ -98,6 +98,16 @@ leave that side open-ended (e.g. no deadline yet). This only affects the
 race standings — a teacher's own "My class" view still shows every book
 they've logged.
 
+## AR levels
+
+Each logged book can have an optional AR (ATOS) book level, e.g. `4.4`.
+**Look up AR level** copies the book title and opens
+[AR BookFinder](https://www.arbookfind.com/) so you can paste it into the
+search. To add a level to a book you already logged, edit it in the book
+list. The progress table shows each student's average AR level and the
+level of their most recently logged book that has one. It appears on the
+student view too (book titles still don't).
+
 ## Student view links
 
 Each class can have a read-only link students open without signing in, for

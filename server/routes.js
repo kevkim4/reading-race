@@ -103,6 +103,28 @@ function findBookForTeacher(bookId, teacherId) {
   );
 }
 
+// pg returns NUMERIC columns as strings; the API speaks plain numbers (or null).
+function bookResponse(row) {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    source: row.source,
+    title: row.title,
+    dateAdded: row.date_added,
+    arLevel: row.ar_level == null ? null : Number(row.ar_level),
+  };
+}
+
+// AR (ATOS) book levels run from about 0.1 to the low teens. Accept 0–20,
+// rounded to one decimal. undefined = not sent (leave as is), null/"" = clear.
+function parseArLevel(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === "") return { ok: true, value: null };
+  const n = typeof value === "number" ? value : Number(String(value).trim());
+  if (!Number.isFinite(n) || n < 0 || n > 20) return { ok: false };
+  return { ok: true, value: Math.round(n * 10) / 10 };
+}
+
 async function requireOwnedClass(req, res, classId) {
   const cls = await findClassForTeacher(classId, req.teacher.id);
   if (!cls) {
@@ -149,8 +171,10 @@ router.delete("/classes/:classId/share", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-// No sign-in: anyone with the link sees the class's names and book counts.
-// Book titles and dates are deliberately not included.
+// No sign-in: anyone with the link sees the class's names, book counts and
+// AR levels. Book titles and dates are deliberately not included; books come
+// back oldest-first (without dates) so the page can show each student's latest
+// AR level.
 router.get("/public/classes/:token", async (req, res) => {
   const cls = await queryOne("SELECT id, name FROM classes WHERE share_token = $1", [
     req.params.token,
@@ -158,16 +182,21 @@ router.get("/public/classes/:token", async (req, res) => {
   if (!cls) return res.status(404).json({ error: "This link isn't active" });
   const students = await query("SELECT id, name FROM students WHERE class_id = $1", [cls.id]);
   const books = await query(
-    `SELECT book_entries.student_id, book_entries.source FROM book_entries
+    `SELECT book_entries.student_id, book_entries.source, book_entries.ar_level FROM book_entries
      JOIN students ON students.id = book_entries.student_id
-     WHERE students.class_id = $1`,
+     WHERE students.class_id = $1
+     ORDER BY book_entries.date_added ASC`,
     [cls.id],
   );
   res.json({
     className: cls.name,
     raceStatus: raceStatusFor(await getRaceWindow()),
     students: students.map((s) => ({ id: s.id, name: s.name })),
-    books: books.map((b) => ({ studentId: b.student_id, source: b.source })),
+    books: books.map((b) => ({
+      studentId: b.student_id,
+      source: b.source,
+      arLevel: b.ar_level == null ? null : Number(b.ar_level),
+    })),
   });
 });
 
@@ -196,13 +225,7 @@ router.get("/classes/:classId/data", requireAuth, async (req, res) => {
   );
   res.json({
     students: students.map((s) => ({ id: s.id, name: s.name })),
-    books: books.map((b) => ({
-      id: b.id,
-      studentId: b.student_id,
-      source: b.source,
-      title: b.title,
-      dateAdded: b.date_added,
-    })),
+    books: books.map(bookResponse),
   });
 });
 
@@ -241,42 +264,42 @@ router.delete("/students/:studentId", requireAuth, async (req, res) => {
 router.post("/students/:studentId/books", requireAuth, async (req, res) => {
   const student = await findStudentForTeacher(req.params.studentId, req.teacher.id);
   if (!student) return res.status(404).json({ error: "Student not found" });
-  const { source, title } = req.body || {};
+  const { source, title, arLevel } = req.body || {};
   if (source !== "WonderRoom" && source !== "Others") {
     return res.status(400).json({ error: "source must be WonderRoom or Others" });
   }
+  const ar = parseArLevel(arLevel);
+  if (!ar.ok) return res.status(400).json({ error: "AR level must be a number from 0 to 20" });
   const id = crypto.randomUUID();
   const row = await queryOne(
-    "INSERT INTO book_entries (id, student_id, source, title) VALUES ($1, $2, $3, $4) RETURNING *",
-    [id, student.id, source, (title || "").trim()],
+    `INSERT INTO book_entries (id, student_id, source, title, ar_level)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [id, student.id, source, (title || "").trim(), ar.value ?? null],
   );
-  res.status(201).json({
-    id: row.id,
-    studentId: row.student_id,
-    source: row.source,
-    title: row.title,
-    dateAdded: row.date_added,
-  });
+  res.status(201).json(bookResponse(row));
 });
 
 router.patch("/books/:bookId", requireAuth, async (req, res) => {
   const book = await findBookForTeacher(req.params.bookId, req.teacher.id);
   if (!book) return res.status(404).json({ error: "Book not found" });
-  const { source, title } = req.body || {};
+  const { source, title, arLevel } = req.body || {};
   if (source !== "WonderRoom" && source !== "Others") {
     return res.status(400).json({ error: "source must be WonderRoom or Others" });
   }
-  const row = await queryOne(
-    "UPDATE book_entries SET source = $1, title = $2 WHERE id = $3 RETURNING *",
-    [source, (title || "").trim(), book.id],
-  );
-  res.json({
-    id: row.id,
-    studentId: row.student_id,
-    source: row.source,
-    title: row.title,
-    dateAdded: row.date_added,
-  });
+  const ar = parseArLevel(arLevel);
+  if (!ar.ok) return res.status(400).json({ error: "AR level must be a number from 0 to 20" });
+  const row =
+    ar.value === undefined
+      ? await queryOne("UPDATE book_entries SET source = $1, title = $2 WHERE id = $3 RETURNING *", [
+          source,
+          (title || "").trim(),
+          book.id,
+        ])
+      : await queryOne(
+          "UPDATE book_entries SET source = $1, title = $2, ar_level = $3 WHERE id = $4 RETURNING *",
+          [source, (title || "").trim(), ar.value, book.id],
+        );
+  res.json(bookResponse(row));
 });
 
 router.delete("/books/:bookId", requireAuth, async (req, res) => {

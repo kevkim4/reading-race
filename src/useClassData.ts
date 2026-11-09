@@ -54,16 +54,16 @@ export function useClassData(classId: string | null) {
   );
 
   const addBook = useCallback(
-    async (studentId: string, source: BookSource, title: string) => {
-      await api.addBook(studentId, source, title);
+    async (studentId: string, source: BookSource, title: string, arLevel: number | null) => {
+      await api.addBook(studentId, source, title, arLevel);
       await reload();
     },
     [reload],
   );
 
   const updateBook = useCallback(
-    async (bookId: string, source: BookSource, title: string) => {
-      await api.updateBook(bookId, source, title);
+    async (bookId: string, source: BookSource, title: string, arLevel: number | null) => {
+      await api.updateBook(bookId, source, title, arLevel);
       await reload();
     },
     [reload],

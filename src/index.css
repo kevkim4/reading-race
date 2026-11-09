@@ -924,3 +924,80 @@ td.num {
 .counts-cell {
   font-weight: 700;
 }
+
+/* AR level */
+.title-ar-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.title-ar-row .title-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.title-ar-row .ar-field {
+  width: 130px;
+  flex: none;
+}
+
+.title-ar-row input {
+  width: 100%;
+}
+
+input[type="number"] {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--baseline);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="number"]:focus {
+  outline: 2px solid var(--series-wonderroom);
+  outline-offset: 1px;
+}
+
+.ar-lookup {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: -4px;
+}
+
+.ar-lookup-hint {
+  font-size: 12px;
+}
+
+.ar-chip {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--page-plane);
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.book-edit-form input.ar-input-small {
+  width: 72px;
+  flex: none;
+  padding: 5px 8px;
+}
+
+@media (max-width: 420px) {
+  .title-ar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title-ar-row .ar-field {
+    width: auto;
+  }
+}

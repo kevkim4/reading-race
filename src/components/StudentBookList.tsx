@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import type { ApiBook } from "../api";
 import type { BookSource } from "../types";
+import { lookUpArLevel, parseArInput } from "../arLookup";
 
 interface Props {
   studentName: string;
   books: ApiBook[];
-  onUpdate: (bookId: string, source: BookSource, title: string) => void;
+  onUpdate: (bookId: string, source: BookSource, title: string, arLevel: number | null) => void;
   onRemove: (bookId: string) => void;
 }
 
@@ -17,6 +18,7 @@ export function StudentBookList({ studentName, books, onUpdate, onRemove }: Prop
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSource, setEditSource] = useState<BookSource>("Others");
   const [editTitle, setEditTitle] = useState("");
+  const [editAr, setEditAr] = useState("");
 
   const sorted = [...books].sort((a, b) => b.dateAdded.localeCompare(a.dateAdded));
 
@@ -24,12 +26,15 @@ export function StudentBookList({ studentName, books, onUpdate, onRemove }: Prop
     setEditingId(book.id);
     setEditSource(book.source);
     setEditTitle(book.title);
+    setEditAr(book.arLevel == null ? "" : String(book.arLevel));
   }
 
   function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!editingId) return;
-    onUpdate(editingId, editSource, editTitle);
+    const ar = parseArInput(editAr);
+    if (ar === undefined) return; // the number input's own validation explains why
+    onUpdate(editingId, editSource, editTitle, ar);
     setEditingId(null);
   }
 
@@ -72,7 +77,28 @@ export function StudentBookList({ studentName, books, onUpdate, onRemove }: Prop
                   placeholder="Book title (optional)"
                   autoFocus
                 />
+                <input
+                  type="number"
+                  className="ar-input-small"
+                  inputMode="decimal"
+                  step="0.1"
+                  min="0"
+                  max="20"
+                  value={editAr}
+                  onChange={(e) => setEditAr(e.target.value)}
+                  placeholder="AR"
+                  aria-label="AR level"
+                />
                 <div className="book-edit-actions">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Look up AR level on AR BookFinder"
+                    title="Look up AR level (copies the title)"
+                    onClick={() => lookUpArLevel(editTitle)}
+                  >
+                    ↗
+                  </button>
                   <button type="submit" className="icon-button" aria-label="Save" title="Save">
                     ✓
                   </button>
@@ -92,6 +118,11 @@ export function StudentBookList({ studentName, books, onUpdate, onRemove }: Prop
             <li key={book.id} className="book-list-row">
               <span className={`swatch swatch-${book.source === "WonderRoom" ? "wonderroom" : "others"}`} />
               <span className="book-list-title">{book.title || <em>Untitled</em>}</span>
+              {book.arLevel != null && (
+                <span className="ar-chip" title="AR level">
+                  AR {book.arLevel.toFixed(1)}
+                </span>
+              )}
               <span className="book-list-date">{formatDate(book.dateAdded)}</span>
               <span className="roster-actions">
                 <button

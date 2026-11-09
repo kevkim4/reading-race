@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type AdminClass, type AdminTeacher } from "../api";
 import { useRaceStatus } from "../RaceStatusContext";
+import { NewSchoolYear } from "./NewSchoolYear";
 
 function errorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
@@ -34,6 +35,7 @@ export function AdminPanel() {
       {loadError && <p className="error-text">{loadError}</p>}
       <TeachersSection teachers={teachers} onChanged={reload} />
       <ClassesSection classes={classes} teachers={teachers ?? []} onChanged={reload} />
+      <NewSchoolYear classes={classes} />
     </>
   );
 }

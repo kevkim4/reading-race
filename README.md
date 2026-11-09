@@ -115,6 +115,22 @@ On the **Admin** tab:
 Each class has one teacher. Teachers can still create their own classes
 from **My class**.
 
+## Starting a new school year (admins)
+
+**Admin → New school year → Start new school year…**
+
+1. The dialog says what will happen and asks whether to **download a
+   spreadsheet** of this year's data first: one Excel file for the whole
+   school, with Classes, Students (counts, AR averages, goal met) and
+   Books (every logged book) tabs.
+2. Type **NEW YEAR** to confirm. This is permanent: every class's students
+   and books (including AR levels) are deleted. The reset is
+   all-or-nothing: if anything fails partway, nothing is deleted.
+3. Kept: all classes and teachers, so you can rename or reassign them for
+   the new year. Cleared: race start/deadline dates. Every class's
+   student link is turned off, so last year's Google Classroom links stop
+   working; teachers make a new one.
+
 ## AR levels
 
 Each logged book can have an optional AR (ATOS) book level, e.g. `4.4`.

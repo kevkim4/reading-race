@@ -153,6 +153,32 @@ export const api = {
     request<{ id: string }>(`/admin/classes/${classId}`, { method: "PATCH", body: JSON.stringify(changes) }),
   deleteAdminClass: (classId: string) => request<void>(`/admin/classes/${classId}`, { method: "DELETE" }),
 
+  /** Downloads the whole-school spreadsheet; resolves with the filename once the browser has the file. */
+  downloadSchoolExport: async (): Promise<string> => {
+    const res = await fetch("/api/admin/export", { credentials: "include", cache: "no-store" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || `Download failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const match = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "");
+    const filename = match?.[1] ?? "reading-race.xlsx";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return filename;
+  },
+  startNewSchoolYear: (confirm: string) =>
+    request<{ deletedStudents: number; deletedBooks: number }>("/admin/new-school-year", {
+      method: "POST",
+      body: JSON.stringify({ confirm }),
+    }),
+
   getAdminTeachers: () => request<AdminTeacher[]>("/admin/teachers"),
   addAdminTeacher: (name: string, email: string) =>
     request<AdminTeacher>("/admin/teachers", { method: "POST", body: JSON.stringify({ name, email }) }),

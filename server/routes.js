@@ -12,6 +12,7 @@ import {
   teacherResponse,
 } from "./auth.js";
 import { studentCompletionTime, GOAL_TOTAL_BOOKS, GOAL_WONDERROOM_BOOKS } from "./completion.js";
+import { buildSchoolWorkbook, startNewSchoolYear, NEW_YEAR_CONFIRMATION } from "./schoolYear.js";
 
 export const router = Router();
 
@@ -480,6 +481,28 @@ router.patch("/admin/classes/:classId", requireAuth, requireAdmin, async (req, r
   const teacherId = teacher.value === undefined ? cls.teacher_id : teacher.value;
   await query("UPDATE classes SET name = $1, teacher_id = $2 WHERE id = $3", [name, teacherId, cls.id]);
   res.json({ id: cls.id, name, teacherId });
+});
+
+// ---- New school year ----
+
+router.get("/admin/export", requireAuth, requireAdmin, async (req, res) => {
+  const buffer = await buildSchoolWorkbook();
+  const filename = `reading-race-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  res.set({
+    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+  });
+  res.send(Buffer.from(buffer));
+});
+
+// Irreversible: requires the typed confirmation phrase in the body.
+router.post("/admin/new-school-year", requireAuth, requireAdmin, async (req, res) => {
+  if (req.body?.confirm !== NEW_YEAR_CONFIRMATION) {
+    return res.status(400).json({ error: `Type ${NEW_YEAR_CONFIRMATION} to confirm` });
+  }
+  const result = await startNewSchoolYear();
+  console.log(`[new-school-year] by ${req.teacher.email}:`, result);
+  res.json(result);
 });
 
 router.delete("/admin/classes/:classId", requireAuth, requireAdmin, async (req, res) => {

@@ -24,6 +24,23 @@ export async function queryOne(text, params) {
   return rows[0] ?? null;
 }
 
+// Runs fn(client) inside BEGIN/COMMIT on one connection; any error rolls
+// everything back, so multi-step changes are all-or-nothing.
+export async function transaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function migrate() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS teachers (

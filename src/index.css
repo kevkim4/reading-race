@@ -15,6 +15,7 @@
   --status-good: #0ca30c;
   --status-good-text: #006300;
   --status-warning: #fab219;
+  --status-critical: #d03b3b;
 
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -37,6 +38,7 @@
     --status-good: #0ca30c;
     --status-good-text: #0ca30c;
     --status-warning: #fab219;
+  --status-critical: #d03b3b;
   }
 }
 
@@ -1093,4 +1095,123 @@ input[type="number"]:focus {
   padding: 4px 8px;
   min-width: 0;
   width: 160px;
+}
+
+/* New school year: danger button + modal dialog */
+.danger-button {
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--status-critical);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+}
+
+.danger-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.danger-button:focus-visible,
+.modal button:focus-visible {
+  outline: 2px solid var(--series-wonderroom);
+  outline-offset: 2px;
+}
+
+.modal {
+  width: min(520px, calc(100vw - 32px));
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  padding: 24px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+.modal-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.modal-list strong {
+  color: var(--text-primary);
+}
+
+.modal-question {
+  margin: 0 0 14px;
+  font-weight: 600;
+}
+
+.modal-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.45;
+  background: var(--page-plane);
+  border-left: 3px solid var(--baseline);
+}
+
+.modal-note.good {
+  border-left-color: var(--status-good);
+}
+
+.modal-note.warn {
+  border-left-color: var(--status-critical);
+}
+
+.modal .field input {
+  width: 100%;
+  letter-spacing: 0.04em;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.modal-actions .primary {
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--series-wonderroom);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+}
+
+.modal-actions .primary:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.modal-actions .secondary {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--baseline);
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+
+.modal-actions .link-button {
+  margin-left: auto;
 }

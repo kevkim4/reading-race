@@ -34,6 +34,7 @@ export function LoginScreen() {
   const { refresh } = useAuth();
   const [googleClientId, setGoogleClientId] = useState<string | null | undefined>(undefined);
   const [allowedEmailDomain, setAllowedEmailDomain] = useState<string | null>(null);
+  const [testSignIn, setTestSignIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +44,7 @@ export function LoginScreen() {
       .then((c) => {
         setGoogleClientId(c.googleClientId);
         setAllowedEmailDomain(c.allowedEmailDomain);
+        setTestSignIn(c.testSignIn === true);
       })
       .catch(() => setGoogleClientId(null));
   }, []);
@@ -102,7 +104,14 @@ export function LoginScreen() {
 
         {googleClientId && <div ref={buttonRef} className="google-button-slot" />}
 
-        {googleClientId === null && (
+        {googleClientId === null && !testSignIn && (
+          <p className="empty-hint">
+            Sign-in isn't set up yet. An admin needs to add <code>GOOGLE_CLIENT_ID</code> to this
+            server's settings (on Render: the service's Environment page), then redeploy.
+          </p>
+        )}
+
+        {googleClientId === null && testSignIn && (
           <div className="dev-login">
             <p className="empty-hint">
               Google sign-in isn't configured on this server yet — see the README to add a

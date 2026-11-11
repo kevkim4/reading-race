@@ -25,6 +25,8 @@ export interface Teacher {
 export interface ServerConfig {
   googleClientId: string | null;
   allowedEmailDomain: string | null;
+  /** True only on a developer's machine with no Google client configured. */
+  testSignIn: boolean;
 }
 
 export interface RaceStatus {

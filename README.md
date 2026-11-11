@@ -63,10 +63,16 @@ http://localhost:5173).
 
 **Don't have a Google OAuth client set up yet?** Leave `GOOGLE_CLIENT_ID`
 blank in `.env` — the sign-in screen will offer a test sign-in (name + email,
-no password) so you can try the whole app immediately. It's automatically
-disabled the moment you configure a real `GOOGLE_CLIENT_ID`.
+no password) so you can try the whole app immediately. Test sign-in only
+exists on your own computer: it's off whenever `GOOGLE_CLIENT_ID` is set, and
+always off on a deployed server (`NODE_ENV=production`, or on Render), where
+the sign-in page instead says sign-in isn't set up yet. That matters because
+test sign-in trusts whatever email is typed, an admin's included.
 
 ## Google sign-in setup
+
+Do this while signed in to Google as the account that owns the deployment
+(ideally a shared school account, so it doesn't depend on one person).
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    (create a project first if you don't have one).
@@ -163,10 +169,8 @@ no local install, no command line.
    the `DATABASE_URL` handy.
 2. Go to [render.com](https://render.com) and sign up (a GitHub account
    works, and makes step 3 easier).
-3. **New → Web Service**, then connect it to the `kevkim4/reading-race`
-   GitHub repo (grant Render access if it asks) and pick the
-   `claude/reading-race-tracker-oy6g74` branch (or whichever branch has
-   this merged into it by the time you deploy).
+3. **New → Web Service**, then connect it to this app's GitHub repository
+   (grant Render access if it asks) and pick the `main` branch.
 4. Fill in:
    - **Build Command**: `npm install --include=dev && npm run build`
      (the `--include=dev` matters: `typescript`/`vite` and their type
@@ -183,7 +187,8 @@ no local install, no command line.
    - `GOOGLE_CLIENT_ID`
    - `ALLOWED_EMAIL_DOMAIN`
    - `ADMIN_EMAILS`
-   - `JWT_SECRET` — any long random string
+   - `JWT_SECRET` — any long random string (Render's **Generate** button,
+     if offered, is fine)
    - `NODE_ENV` = `production`
 6. Click **Create Web Service**. Render builds and starts it, then gives you
    a URL like `https://reading-race.onrender.com`.

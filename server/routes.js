@@ -19,8 +19,19 @@ export const router = Router();
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || null;
 const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || "").trim() || null;
 
+// Test sign-in lets anyone type any allowed email (an admin's included), so it
+// only exists on a developer's own machine: never on a deployed server
+// (NODE_ENV=production, or on Render, which sets RENDER), and never once real
+// Google sign-in is configured.
+const TEST_SIGNIN_ENABLED =
+  !GOOGLE_CLIENT_ID && process.env.NODE_ENV !== "production" && !process.env.RENDER;
+
 router.get("/config", (req, res) => {
-  res.json({ googleClientId: GOOGLE_CLIENT_ID, allowedEmailDomain: ALLOWED_EMAIL_DOMAIN });
+  res.json({
+    googleClientId: GOOGLE_CLIENT_ID,
+    allowedEmailDomain: ALLOWED_EMAIL_DOMAIN,
+    testSignIn: TEST_SIGNIN_ENABLED,
+  });
 });
 
 // ---- Auth ----
@@ -47,12 +58,11 @@ router.post("/auth/google", async (req, res) => {
   }
 });
 
-// Dev-only stand-in for Google sign-in, used while GOOGLE_CLIENT_ID isn't
-// configured yet so the app can still be tried out end-to-end. Disabled the
-// moment a real client ID is set.
+// Stand-in for Google sign-in on a developer's own machine, so the app can be
+// tried end-to-end before a Google client exists. See TEST_SIGNIN_ENABLED.
 router.post("/auth/dev-login", async (req, res) => {
-  if (GOOGLE_CLIENT_ID) {
-    return res.status(403).json({ error: "Dev login is disabled once Google sign-in is configured" });
+  if (!TEST_SIGNIN_ENABLED) {
+    return res.status(403).json({ error: "Test sign-in is turned off on this server" });
   }
   const name = (req.body?.name || "").trim();
   const email = (req.body?.email || "").trim();

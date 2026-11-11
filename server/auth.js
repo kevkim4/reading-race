@@ -40,7 +40,7 @@ export function teacherResponse(teacher) {
 
 if (!GOOGLE_CLIENT_ID) {
   console.warn(
-    "[auth] GOOGLE_CLIENT_ID is not set — Google sign-in will fail. See README for setup.",
+    "[auth] GOOGLE_CLIENT_ID is not set — nobody can sign in with Google. On a deployed server (NODE_ENV=production or Render) the sign-in page says sign-in isn't set up yet; locally it offers test sign-in. See README for setup.",
   );
 }
 if (!JWT_SECRET) {
